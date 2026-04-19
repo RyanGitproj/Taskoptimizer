@@ -114,13 +114,13 @@ npm run dev
 
 - `ALLOWED_ORIGINS` : Liste des origines autorisées pour CORS (séparées par virgule)
   - Développement : `http://localhost:3000,http://127.0.0.1:3000`
-  - Production (Render) : `https://your-frontend.vercel.app,https://your-domain.com`
+  - Production : `https://your-frontend-domain.com,https://another-domain.com`
 
 ### Frontend (.env.local)
 
 - `NEXT_PUBLIC_API_URL` : URL de l'API backend
   - Développement : `http://localhost:8000`
-  - Production (Vercel) : `https://your-backend.onrender.com`
+  - Production : `https://your-backend-domain.com`
 
 ---
 
