@@ -58,7 +58,7 @@ export default function PagePrincipale() {
 
     try {
       const params = {
-        activites: valides.map(({ id: _id, ...rest }) => rest),
+        activites: valides.map(({ id: _id, ...rest }) => rest), // eslint-disable-line @typescript-eslint/no-unused-vars
         heure_debut_travail: heureDebut,
         heure_fin_travail: heureFin,
         duree_pause: dureePause,
@@ -96,7 +96,7 @@ export default function PagePrincipale() {
     if (resultat) {
       debouncedOptimisation();
     }
-  }, [activites, heureDebut, heureFin, dureePause]);
+  }, [activites, heureDebut, heureFin, dureePause, resultat, debouncedOptimisation]);
 
   const ajouterActivite = () => {
     if (activites.length >= 20) return;
@@ -161,7 +161,7 @@ export default function PagePrincipale() {
                 Définir vos activités
               </h2>
               <p className="text-sm text-gray-400">
-                Le moteur d'optimisation générera automatiquement votre planning optimal.
+                Le moteur d&#39;optimisation générera automatiquement votre planning optimal.
               </p>
             </div>
 
@@ -247,7 +247,7 @@ export default function PagePrincipale() {
                 ) : (
                   <>
                     <span className="text-base">◈</span>
-                    Lancer l'optimisation
+                    Lancer l&#39;optimisation
                   </>
                 )}
               </button>

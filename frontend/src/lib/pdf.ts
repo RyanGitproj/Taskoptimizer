@@ -172,7 +172,7 @@ export function exporterPlanningPDF(resultat: ResultatOptimisation, heureDebut: 
   }
   
   // --- PIED DE PAGE ---
-  const pageCount = (doc as any).internal.getNumberOfPages();
+  const pageCount = (doc as unknown as { internal: { getNumberOfPages: () => number } }).internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
