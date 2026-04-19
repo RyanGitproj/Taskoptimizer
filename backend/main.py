@@ -31,7 +31,16 @@ app = FastAPI(
 
 # CORS : configuration dynamique via variable d'environnement
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "")
-origins = [origin.strip() for origin in ALLOWED_ORIGINS.split(",") if origin.strip()]
+
+# Conversion propre + fallback sécurisé
+if ALLOWED_ORIGINS:
+    origins = [origin.strip() for origin in ALLOWED_ORIGINS.split(",") if origin.strip()]
+else:
+    # fallback développement uniquement
+    origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ]
 
 app.add_middleware(
     CORSMiddleware,
