@@ -1,6 +1,7 @@
 import { ParametresOptimisation, ResultatOptimisation, ReponseStandard } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+console.log("[DEBUG] API URL:", BASE_URL);
 
 export class ErreurAPI extends Error {
   code: string;

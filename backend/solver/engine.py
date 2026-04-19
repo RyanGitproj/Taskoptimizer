@@ -266,8 +266,26 @@ class MoteurOptimisation:
         # Normalisation : garantir un ordre canonique unique
         planifiees = self._normaliser_planning(planifiees)
 
+        # Debug: log task order
+        print("[DEBUG] Task order after normalization:")
+        for p in planifiees:
+            print(f"  {p.nom}: debut={p.debut}, fin={p.fin}, duree={p.fin - p.debut}")
+
         # Insérer les pauses basées sur l'ordre chronologique réel
         planifiees_avec_pauses = self._inserer_pauses_post_resolution(planifiees)
+
+        # Debug: log task order after pauses
+        print("[DEBUG] Task order after pauses:")
+        for p in planifiees_avec_pauses:
+            print(f"  {p.nom}: debut={p.debut}, fin={p.fin}, duree={p.fin - p.debut}, est_pause={p.est_pause}")
+
+        # Validation: detect unjustified gaps
+        for i in range(len(planifiees_avec_pauses) - 1):
+            actuel = planifiees_avec_pauses[i]
+            suivant = planifiees_avec_pauses[i + 1]
+            gap = suivant.debut - actuel.fin
+            if gap > 30 and not actuel.est_pause and not suivant.est_pause:
+                print(f"[WARNING] Unjustified gap detected: {gap} min between '{actuel.nom}' ({actuel.fin}) and '{suivant.nom}' ({suivant.debut})")
 
         # Validation finale : détecter et corriger les chevauchements
         planifiees_avec_pauses = self._valider_et_corriger_chevauchements(planifiees_avec_pauses)

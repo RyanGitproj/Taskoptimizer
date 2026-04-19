@@ -37,6 +37,7 @@ export default function PagePrincipale() {
   const [chargementAuto, setChargementAuto] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [succesVisible, setSuccesVisible] = useState(false);
+  const [isEditingResult, setIsEditingResult] = useState(false);
 
   // Fonction d'optimisation réutilisable (manuelle ou auto)
   const executerOptimisation = async (mode: "manuel" | "auto") => {
@@ -67,6 +68,7 @@ export default function PagePrincipale() {
       setResultat(res);
       setErreur(null);
       if (mode === "manuel") {
+        setIsEditingResult(true);
         setSuccesVisible(true);
         setTimeout(() => setSuccesVisible(false), 3000);
       }
@@ -91,12 +93,12 @@ export default function PagePrincipale() {
   }, 500);
 
   useEffect(() => {
-    // Ne lancer l'auto-optimisation que si un résultat existe déjà
+    // Ne lancer l'auto-optimisation que si un résultat existe déjà ET qu'on est en mode édition
     // (évite d'optimiser dès le chargement initial)
-    if (resultat) {
+    if (resultat && isEditingResult) {
       debouncedOptimisation();
     }
-  }, [activites, heureDebut, heureFin, dureePause, resultat, debouncedOptimisation]);
+  }, [activites, heureDebut, heureFin, dureePause, resultat, debouncedOptimisation, isEditingResult]);
 
   const ajouterActivite = () => {
     if (activites.length >= 20) return;
@@ -120,6 +122,7 @@ export default function PagePrincipale() {
   const reinitialiser = () => {
     setResultat(null);
     setErreur(null);
+    setIsEditingResult(false);
   };
 
   return (
