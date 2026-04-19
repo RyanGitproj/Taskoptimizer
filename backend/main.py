@@ -3,6 +3,7 @@ main.py — Point d'entrée de l'application TaskOptimizer Backend
 """
 
 import logging
+import os
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -28,10 +29,13 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS : autoriser le frontend Next.js en développement
+# CORS : configuration dynamique via variable d'environnement
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "")
+origins = [origin.strip() for origin in ALLOWED_ORIGINS.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

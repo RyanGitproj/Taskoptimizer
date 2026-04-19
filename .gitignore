@@ -36,6 +36,9 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+# Allow example files (safe to commit)
+!.env.example
+!.env.local.example
 
 # ======================
 # IDE / EDITOR

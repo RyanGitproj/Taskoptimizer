@@ -85,6 +85,11 @@ venv\Scripts\activate
 # Sur Linux/Mac :
 source venv/bin/activate
 pip install -r requirements.txt
+
+# Copier l'exemple de configuration
+cp .env.example .env
+
+# Modifier .env si nécessaire (par défaut : localhost:3000)
 uvicorn main:app --reload
 ```
 
@@ -93,8 +98,29 @@ uvicorn main:app --reload
 ```bash
 cd frontend
 npm install
+
+# Copier l'exemple de configuration
+cp .env.local.example .env.local
+
+# Modifier .env.local si nécessaire (par défaut : localhost:8000)
 npm run dev
 ```
+
+---
+
+## 🔧 Configuration (Variables d'environnement)
+
+### Backend (.env)
+
+- `ALLOWED_ORIGINS` : Liste des origines autorisées pour CORS (séparées par virgule)
+  - Développement : `http://localhost:3000,http://127.0.0.1:3000`
+  - Production (Render) : `https://your-frontend.vercel.app,https://your-domain.com`
+
+### Frontend (.env.local)
+
+- `NEXT_PUBLIC_API_URL` : URL de l'API backend
+  - Développement : `http://localhost:8000`
+  - Production (Vercel) : `https://your-backend.onrender.com`
 
 ---
 
