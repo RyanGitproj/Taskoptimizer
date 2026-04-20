@@ -20,9 +20,14 @@ TaskOptimizer est une application web qui génère automatiquement un planning o
 - Génération automatique de planning
 - Recalcul dynamique (auto-update)
 - Gestion des priorités (1 à 5)
-- Support des tâches fixes
+- Support des tâches fixes avec heure souhaitée
 - Gestion des tâches flexibles
-- Découpage automatique des tâches longues (>90 min en 2 segments)
+- 3 modes de placement :
+  - **Compact** : Tâches regroupées au plus tôt
+  - **Uniforme** : Temps libre réparti régulièrement
+  - **Intelligent** : Priorités hautes plus tôt, blanc final limité
+- Détection des conflits entre tâches fixes
+- Système de fair sharing (récompense par paliers, anti-waste)
 - Score d'optimisation
 - Export PDF
 - Interface fluide avec animations
@@ -57,9 +62,17 @@ Frontend → API → Service → Solver → Post-processing → Output
 **Contraintes :**
 - Pas de chevauchement
 - Respect des horaires
-- Tâches fixes respectées
+- Tâches fixes respectées (heure souhaitée obligatoire)
+- Détection des conflits entre tâches fixes
 
-**Objectif :** Maximiser la somme pondérée des tâches selon leur priorité
+**Objectif (Fair Sharing) :**
+- Maximiser la somme pondérée des tâches selon leur priorité
+- Récompense par paliers pour les gaps :
+  - 0-20 min : 5000 points (vital)
+  - 20-60 min : 2000 points (confortable)
+- Pénalité anti-waste : gaps > 90 min (-15000 points)
+- Réduction de la pression de fin pour permettre l'étalement
+- Mode intelligent : attraction vers le matin pour les priorités P5/P4
 
 ---
 
@@ -116,11 +129,18 @@ npm run dev
 
 ## 🧪 Utilisation
 
-1. Ajouter des activités
-2. Définir horaires et paramètres
-3. Lancer l'optimisation
-4. Visualiser le planning
-5. Exporter en PDF
+1. Ajouter des activités avec :
+   - Nom, durée, priorité (1-5)
+   - Flexibilité (fixe ou flexible)
+   - Heure souhaitée (pour les tâches fixes)
+2. Définir horaires de travail
+3. Choisir le mode de placement :
+   - **Compact** : Tâches regroupées au début
+   - **Uniforme** : Temps libre réparti régulièrement
+   - **Intelligent** : Priorités hautes plus tôt (recommandé)
+4. Lancer l'optimisation
+5. Visualiser le planning généré
+6. Exporter en PDF
 
 ---
 
