@@ -158,3 +158,10 @@ Ce projet démontre :
 - **Frontend :** Next.js 15, React 19, TypeScript, Tailwind CSS, Framer Motion
 - **Backend :** FastAPI, Pydantic, Google OR-Tools CP-SAT
 - **Export :** jsPDF
+
+---
+
+## 📜 Licence
+
+© 2026 RAKOTOAHIJOHN Tsioritiana Ryan
+Email: tsioritianaryan@gmail.com
