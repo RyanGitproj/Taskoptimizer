@@ -29,31 +29,13 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS : configuration dynamique via variable d'environnement
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "")
-
-# Conversion propre + fallback sécurisé
-if ALLOWED_ORIGINS:
-    origins = [origin.strip() for origin in ALLOWED_ORIGINS.split(",") if origin.strip()]
-else:
-    # fallback développement uniquement
-    origins = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001"
-    ]
-
-logger.info(f"CORS configured origins: {origins}")
-logger.info(f"ALLOWED_ORIGINS env var: {ALLOWED_ORIGINS}")
-
+# CORS : autoriser toutes les origines
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
 app.include_router(router)
