@@ -41,9 +41,6 @@ def _convertir_activites(activites: List[Activite]) -> List[TacheEntree]:
         debut_souhaite = None
         if act.flexibilite == Flexibilite.fixe and act.heure_debut_souhaitee:
             debut_souhaite = _heure_en_minutes(act.heure_debut_souhaitee)
-            logger.debug(f"Tâche fixe '{act.nom}': heure_debut_souhaitee={act.heure_debut_souhaitee}, debut_souhaite={debut_souhaite}")
-        elif act.flexibilite == Flexibilite.fixe:
-            logger.warning(f"Tâche fixe '{act.nom}' sans heure_debut_souhaitee!")
 
         taches.append(TacheEntree(
             id=i,

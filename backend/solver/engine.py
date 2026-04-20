@@ -91,13 +91,6 @@ class MoteurOptimisation:
         solveur.parameters.linearization_level = 1
         solveur.parameters.num_search_workers = 4
         statut = solveur.Solve(modele)
-        
-        # Log solver status for debugging
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Solver status: {statut}")
-        if statut == cp_model.INFEASIBLE:
-            logger.warning("Solver returned INFEASIBLE - constraints may be conflicting")
 
         return self._extraire_resultat(solveur, statut, taches, vars_taches)
 
