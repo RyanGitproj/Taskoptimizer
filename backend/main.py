@@ -45,6 +45,7 @@ else:
     ]
 
 logger.info(f"CORS configured origins: {origins}")
+logger.info(f"ALLOWED_ORIGINS env var: {ALLOWED_ORIGINS}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,6 +53,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 app.include_router(router)
