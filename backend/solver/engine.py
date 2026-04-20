@@ -105,6 +105,9 @@ class MoteurOptimisation:
         """
         par_signature = {}
         for i, tache in enumerate(taches):
+            # Exclure les tâches fixes avec heure souhaitée du symmetry breaking
+            if not tache.est_flexible and tache.debut_souhaite is not None:
+                continue
             # Signature: même nom, durée, priorité, flexibilité
             sig = (tache.nom, tache.duree, tache.priorite, tache.est_flexible)
             par_signature.setdefault(sig, []).append(i)
