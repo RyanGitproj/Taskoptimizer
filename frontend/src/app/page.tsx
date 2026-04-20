@@ -36,8 +36,6 @@ export default function PagePrincipale() {
   const [chargementAuto, setChargementAuto] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [succesVisible, setSuccesVisible] = useState(false);
-  const [isEditingResult, setIsEditingResult] = useState(false);
-  const [userIsEditing, setUserIsEditing] = useState(false);
   const [view, setView] = useState<"input" | "result">("input"); // Explicit view state
   const [optimisationToken, setOptimisationToken] = useState(0);
   const isNavigatingRef = useRef(false);
