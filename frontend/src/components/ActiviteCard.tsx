@@ -90,7 +90,13 @@ export default function ActiviteCard({ activite, index, onModifier, onSupprimer 
           {(["flexible", "fixe"] as Flexibilite[]).map((f) => (
             <button
               key={f}
-              onClick={() => onModifier(activite.id, "flexibilite", f)}
+              onClick={() => {
+                onModifier(activite.id, "flexibilite", f);
+                // Auto-set heure_debut_souhaitee to "09:00" when switching to fixe
+                if (f === "fixe" && !activite.heure_debut_souhaitee) {
+                  onModifier(activite.id, "heure_debut_souhaitee", "09:00");
+                }
+              }}
               className={`flex-1 py-1.5 rounded-xl text-xs font-semibold border transition-all duration-150 ${
                 activite.flexibilite === f
                   ? "bg-indigo-600 text-white border-indigo-600"

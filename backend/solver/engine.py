@@ -91,6 +91,13 @@ class MoteurOptimisation:
         solveur.parameters.linearization_level = 1
         solveur.parameters.num_search_workers = 4
         statut = solveur.Solve(modele)
+        
+        # Log solver status for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Solver status: {statut}")
+        if statut == cp_model.INFEASIBLE:
+            logger.warning("Solver returned INFEASIBLE - constraints may be conflicting")
 
         return self._extraire_resultat(solveur, statut, taches, vars_taches)
 
@@ -192,6 +199,7 @@ class MoteurOptimisation:
                 # Une tâche fixe est une contrainte forte: si son heure est fournie,
                 # elle doit être planifiée exactement à cette heure.
                 modele.Add(vars_taches[i]["planifiee"] == 1)
+                # Contrainte dure: le début doit être exactement l'heure souhaitée
                 modele.Add(vars_taches[i]["debut"] == tache.debut_souhaite).OnlyEnforceIf(
                     vars_taches[i]["planifiee"]
                 )

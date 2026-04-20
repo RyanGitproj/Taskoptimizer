@@ -41,6 +41,9 @@ def _convertir_activites(activites: List[Activite]) -> List[TacheEntree]:
         debut_souhaite = None
         if act.flexibilite == Flexibilite.fixe and act.heure_debut_souhaitee:
             debut_souhaite = _heure_en_minutes(act.heure_debut_souhaitee)
+            logger.debug(f"Tâche fixe '{act.nom}': heure_debut_souhaitee={act.heure_debut_souhaitee}, debut_souhaite={debut_souhaite}")
+        elif act.flexibilite == Flexibilite.fixe:
+            logger.warning(f"Tâche fixe '{act.nom}' sans heure_debut_souhaitee!")
 
         taches.append(TacheEntree(
             id=i,
@@ -85,6 +88,23 @@ def optimiser_planning(params: ParametresOptimisation) -> ResultatOptimisation:
             debut=params.heure_debut_travail,
             fin=params.heure_fin_travail,
         )
+
+    # Vérifier les conflits entre tâches fixes
+    fixes = [a for a in params.activites if a.flexibilite == Flexibilite.fixe and a.heure_debut_souhaitee]
+    if len(fixes) > 1:
+        for i in range(len(fixes)):
+            for j in range(i + 1, len(fixes)):
+                t1_debut = _heure_en_minutes(fixes[i].heure_debut_souhaitee)
+                t1_fin = t1_debut + fixes[i].duree
+                t2_debut = _heure_en_minutes(fixes[j].heure_debut_souhaitee)
+                t2_fin = t2_debut + fixes[j].duree
+                # Vérifier le chevauchement
+                if not (t1_fin <= t2_debut or t2_fin <= t1_debut):
+                    logger.error(f"Conflit entre tâches fixes: {fixes[i].nom} et {fixes[j].nom}")
+                    raise ErreurMetier(
+                        code="CONFLIT_TACHES_FIXES",
+                        message=f"Les tâches fixes '{fixes[i].nom}' et '{fixes[j].nom}' se chevauchent."
+                    )
 
     taches = _convertir_activites(params.activites)
     logger.debug(f"Conversion réussie: {len(taches)} tâches pour le solveur")
