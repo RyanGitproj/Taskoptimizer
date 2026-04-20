@@ -63,6 +63,8 @@ def _convertir_planning(plages_resolues) -> List[PlageHoraire]:
             priorite=p.priorite,
             flexibilite="flexible" if p.est_flexible else "fixe",
             est_pause=p.est_pause,
+            overflow=p.overflow,
+            overflow_reason=p.overflow_reason,
         )
         for p in plages_resolues
     ]

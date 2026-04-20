@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Activite, ResultatOptimisation } from "@/types";
 import { optimiserPlanning, ErreurAPI } from "@/lib/api";
 import { genererIdUnique } from "@/lib/utils";
-import { useDebounce } from "@/lib/hooks";
 import { exporterPlanningPDF } from "@/lib/pdf";
 import { AnimatePresence, motion } from "framer-motion";
 import ActiviteCard from "@/components/ActiviteCard";
@@ -38,67 +37,86 @@ export default function PagePrincipale() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [succesVisible, setSuccesVisible] = useState(false);
   const [isEditingResult, setIsEditingResult] = useState(false);
+  const [userIsEditing, setUserIsEditing] = useState(false);
+  const [view, setView] = useState<"input" | "result">("input"); // Explicit view state
+  const [optimisationToken, setOptimisationToken] = useState(0);
+  const isNavigatingRef = useRef(false);
+  const isOptimizingRef = useRef(false);
+  const isAutoCallRef = useRef(false); // Prevent feedback loop on auto calls
 
-  // Fonction d'optimisation réutilisable (manuelle ou auto)
-  const executerOptimisation = async (mode: "manuel" | "auto") => {
-    const valides = activites.filter((a) => a.nom.trim().length > 0);
-    if (valides.length === 0) {
-      if (mode === "manuel") {
-        setErreur("Veuillez ajouter au moins une activité avec un nom.");
-      }
+  // Global API call tracking
+  if (typeof window !== "undefined") {
+    (window as any).__lastApiCall = (window as any).__lastApiCall || null;
+  }
+
+  // Un seul trigger API: cet effect s'exécute uniquement quand l'utilisateur clique "Lancer l'optimisation".
+  useEffect(() => {
+    console.log("[USE EFFECT TRIGGERED]", { optimisationToken });
+    if (optimisationToken === 0) return;
+    if (isOptimizingRef.current) {
+      console.log("[API GUARD] Skipping - API call already in progress");
       return;
     }
 
-    if (mode === "auto") {
-      setChargementAuto(true);
-    } else {
-      setChargement(true);
-      setErreur(null);
-      setResultat(null);
-    }
+    const executerOptimisation = async () => {
+      console.log("[EXECUTING OPTIMISATION]", { optimisationToken });
+      isOptimizingRef.current = true;
+      
+      const valides = activites.filter((a) => a.nom.trim().length > 0);
+      if (valides.length === 0) {
+        setErreur("Veuillez ajouter au moins une activité avec un nom.");
+        setChargement(false);
+        isOptimizingRef.current = false;
+        return;
+      }
 
-    try {
-      const params = {
+      const requestId = Math.floor(Math.random() * 10000);
+      const payloadSnapshot = {
         activites: valides.map(({ id: _id, ...rest }) => rest), // eslint-disable-line @typescript-eslint/no-unused-vars
         heure_debut_travail: heureDebut,
         heure_fin_travail: heureFin,
         duree_pause: dureePause,
       };
-      const res = await optimiserPlanning(params);
-      setResultat(res);
-      setErreur(null);
-      if (mode === "manuel") {
-        setIsEditingResult(true);
+
+      // Track API call interval
+      const now = Date.now();
+      const lastCall = (window as any).__lastApiCall;
+      const interval = lastCall ? now - lastCall : null;
+      (window as any).__lastApiCall = now;
+
+      console.log(`[REQ-${requestId}] EXÉCUTION - Source: clic utilisateur`);
+      console.log(`[REQ-${requestId}] FINAL PAYLOAD:`, payloadSnapshot);
+      console.log("[API TRIGGER]", {
+        heureFin,
+        activites: payloadSnapshot.activites.length,
+        source: "effect",
+        intervalSinceLastCall: interval,
+        lastCallTimestamp: lastCall,
+      });
+
+      try {
+        const res = await optimiserPlanning(payloadSnapshot);
+        console.log(`[REQ-${requestId}] RÉUSSI`);
+        setResultat(res);
+        setErreur(null);
+        setView("result");
         setSuccesVisible(true);
         setTimeout(() => setSuccesVisible(false), 3000);
-      }
-    } catch (e: unknown) {
-      if (e instanceof ErreurAPI) {
-        setErreur(e.message);
-      } else {
-        setErreur("Erreur de connexion au serveur.");
-      }
-    } finally {
-      if (mode === "auto") {
-        setChargementAuto(false);
-      } else {
+      } catch (e: unknown) {
+        console.error(`[REQ-${requestId}] ERREUR:`, e);
+        if (e instanceof ErreurAPI) {
+          setErreur(e.message);
+        } else {
+          setErreur("Erreur de connexion au serveur.");
+        }
+      } finally {
         setChargement(false);
+        isOptimizingRef.current = false;
       }
-    }
-  };
+    };
 
-  // Auto-optimisation avec debounce quand activités ou paramètres changent
-  const debouncedOptimisation = useDebounce(() => {
-    executerOptimisation("auto");
-  }, 500);
-
-  useEffect(() => {
-    // Ne lancer l'auto-optimisation que si un résultat existe déjà ET qu'on est en mode édition
-    // (évite d'optimiser dès le chargement initial)
-    if (resultat && isEditingResult) {
-      debouncedOptimisation();
-    }
-  }, [activites, heureDebut, heureFin, dureePause, resultat, debouncedOptimisation, isEditingResult]);
+    executerOptimisation();
+  }, [optimisationToken]); // Only trigger when user clicks button
 
   const ajouterActivite = () => {
     if (activites.length >= 20) return;
@@ -116,13 +134,40 @@ export default function PagePrincipale() {
   };
 
   const lancerOptimisation = () => {
-    executerOptimisation("manuel");
+    console.log("[LANCER_OPTIMISATION CALLED]", {
+      heureFin,
+      activites: activites.filter((a) => a.nom.trim().length > 0).length,
+      source: "manual",
+      currentToken: optimisationToken,
+    });
+    setErreur(null);
+    setResultat(null);
+    setChargement(true);
+    setOptimisationToken((prev) => {
+      console.log("[TOKEN INCREMENT]", { from: prev, to: prev + 1 });
+      return prev + 1;
+    });
   };
 
   const reinitialiser = () => {
+    console.log("[DEBUG] reinitialiser called - setting view to input");
+    setView("input");
     setResultat(null);
     setErreur(null);
-    setIsEditingResult(false);
+  };
+
+  const handleHeureDebutChange = (valeur: string) => {
+    setHeureDebut(valeur);
+  };
+
+  const handleHeureFinChange = (valeur: string) => {
+    if (!valeur) return; // Sécurité contre les valeurs vides
+    console.log("[DEBUG] User changed heureFin to:", valeur);
+    setHeureFin(valeur);
+  };
+
+  const handleDureePauseChange = (valeur: number) => {
+    setDureePause(valeur);
   };
 
   return (
@@ -150,7 +195,7 @@ export default function PagePrincipale() {
 
       <main className="max-w-6xl mx-auto px-8 py-8">
         <AnimatePresence mode="wait">
-          {!resultat ? (
+          {view === "input" ? (
             <motion.div
               key="input"
               initial={{ opacity: 0, x: -20 }}
@@ -173,9 +218,9 @@ export default function PagePrincipale() {
               heureDebut={heureDebut}
               heureFin={heureFin}
               dureePause={dureePause}
-              onChangeDebut={setHeureDebut}
-              onChangeFin={setHeureFin}
-              onChangePause={setDureePause}
+              onChangeDebut={handleHeureDebutChange}
+              onChangeFin={handleHeureFinChange}
+              onChangePause={handleDureePauseChange}
             />
 
             {/* Grille d'activités */}
@@ -289,16 +334,8 @@ export default function PagePrincipale() {
               </div>
             </div>
 
-            {/* Indicateur de recalcul automatique */}
-            {chargementAuto && (
-              <div className="flex items-center gap-2 text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-2 rounded-xl">
-                <span className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
-                Recalcul automatique en cours…
-              </div>
-            )}
-
             {/* Message résumé utilisateur */}
-            {!chargementAuto && resultat && (
+            {resultat && (
               <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm px-4 py-3 rounded-xl">
                 {resultat.activites_non_planifiees.length === 0
                   ? `Planning optimisé avec succès — Score : ${resultat.score_optimisation}%`
@@ -307,14 +344,16 @@ export default function PagePrincipale() {
             )}
 
             <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-              <TimelinePlanning
-                resultat={resultat}
-                heureDebut={heureDebut}
-                heureFin={heureFin}
-              />
+              {resultat && (
+                <TimelinePlanning
+                  resultat={resultat}
+                  heureDebut={heureDebut}
+                  heureFin={heureFin}
+                />
+              )}
             </div>
           </motion.div>
-        )}
+          )}
         </AnimatePresence>
       </main>
 

@@ -25,6 +25,9 @@ export default function TimelinePlanning({ resultat, heureDebut, heureFin }: Pro
   const largeurPourcent = (debut: string, fin: string): number =>
     ((heureEnMinutes(fin) - heureEnMinutes(debut)) / dureeJournee) * 100;
 
+  // Count overflow tasks
+  const overflowTasks = resultat.planning.filter(p => p.overflow && !p.est_pause);
+
   // Générer les marqueurs horaires
   const marqueurs: string[] = [];
   for (let m = debutJournee; m <= finJournee; m += 60) {
@@ -76,12 +79,26 @@ export default function TimelinePlanning({ resultat, heureDebut, heureFin }: Pro
 
       {/* Message */}
       <div className={`text-sm px-4 py-3 rounded-xl font-medium ${
-        resultat.activites_non_planifiees.length > 0
+        resultat.activites_non_planifiees.length > 0 || overflowTasks.length > 0
           ? "bg-amber-50 text-amber-700 border border-amber-200"
           : "bg-emerald-50 text-emerald-700 border border-emerald-200"
       }`}>
         {resultat.message}
       </div>
+
+      {/* Overflow warning */}
+      {overflowTasks.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm px-4 py-3 rounded-xl">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-amber-600">⚠️</span>
+            <span className="font-semibold">Attention : {overflowTasks.length} tâche(s) dépassent la fenêtre de travail</span>
+          </div>
+          <p className="text-xs text-amber-600 ml-6">
+            Ces tâches flexibles ont été placées en dernier et dépassent l'heure de fin ({heureFin}). 
+            Considérez de les déplacer plus tôt ou de réduire leur durée.
+          </p>
+        </div>
+      )}
 
       {/* Timeline */}
       <div>
@@ -271,7 +288,9 @@ function LignePlanning({ plage }: { plage: PlageHoraire }) {
   const duree = heureEnMinutes(plage.fin) - heureEnMinutes(plage.debut);
 
   return (
-    <div className="flex items-center gap-3 py-2.5 px-4 bg-white border border-gray-100 rounded-xl hover:border-gray-200 transition-colors">
+    <div className={`flex items-center gap-3 py-2.5 px-4 rounded-xl hover:border-gray-200 transition-colors ${
+      plage.overflow ? "bg-amber-50 border-amber-200" : "bg-white border-gray-100"
+    }`}>
       <div
         className="w-2 h-2 rounded-full flex-shrink-0"
         style={{ backgroundColor: couleur }}
@@ -287,6 +306,11 @@ function LignePlanning({ plage }: { plage: PlageHoraire }) {
       >
         P{plage.priorite}
       </span>
+      {plage.overflow && (
+        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 flex-shrink-0" title={plage.overflow_reason}>
+          ⚠️
+        </span>
+      )}
     </div>
   );
 }

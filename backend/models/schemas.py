@@ -36,9 +36,15 @@ class Activite(BaseModel):
 
 class ParametresOptimisation(BaseModel):
     activites: List[Activite] = Field(..., min_length=1, max_length=20)
-    heure_debut_travail: str = Field(default="09:00", description="Début de journée (HH:MM)")
-    heure_fin_travail: str = Field(default="18:00", description="Fin de journée (HH:MM)")
+    heure_debut_travail: str = Field(..., description="Début de journée (HH:MM)")
+    heure_fin_travail: str = Field(..., description="Fin de journée (HH:MM)")
     duree_pause: int = Field(default=15, ge=0, le=60, description="Durée des pauses en minutes")
+
+    @field_validator("heure_fin_travail")
+    @classmethod
+    def log_heure_fin_travail(cls, v):
+        print(f"[SCHEMA DEBUG] heure_fin_travail reçue dans schema: '{v}'")
+        return v
 
     @field_validator("heure_debut_travail", "heure_fin_travail")
     @classmethod
@@ -59,6 +65,8 @@ class PlageHoraire(BaseModel):
     priorite: int
     flexibilite: str
     est_pause: bool = False
+    overflow: bool = False
+    overflow_reason: str = ""
 
 
 class ResultatOptimisation(BaseModel):

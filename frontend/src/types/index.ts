@@ -23,6 +23,8 @@ export interface PlageHoraire {
   priorite: number;
   flexibilite: string;
   est_pause: boolean;
+  overflow: boolean;
+  overflow_reason: string;
 }
 
 export interface ResultatOptimisation {

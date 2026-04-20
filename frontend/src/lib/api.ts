@@ -14,12 +14,33 @@ export class ErreurAPI extends Error {
 }
 
 export async function optimiserPlanning(
-  params: ParametresOptimisation
+  params: ParametresOptimisation,
+  source: "manual" | "effect" | "debounce" = "effect"
 ): Promise<ResultatOptimisation> {
+  const payload = JSON.stringify(params);
+  if (typeof window !== "undefined") {
+    const traceWindow = window as Window & { __lastApiCall?: number };
+    const now = Date.now();
+    const intervalMs = traceWindow.__lastApiCall ? now - traceWindow.__lastApiCall : null;
+    traceWindow.__lastApiCall = now;
+
+    console.log("[API TRIGGER]", {
+      heureFin: params.heure_fin_travail,
+      activites: params.activites.length,
+      source,
+      intervalMs,
+      at: new Date(now).toISOString(),
+    });
+  }
+  console.log("[API DEBUG] FETCH START");
+  console.log("[API DEBUG] Payload keys:", Object.keys(params));
+  console.log("[API DEBUG] heure_fin_travail:", params.heure_fin_travail);
+  console.log("[API DEBUG] Full JSON:", payload);
+  
   const response = await fetch(`${BASE_URL}/api/optimiser`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
+    body: payload,
   });
 
   const body: ReponseStandard<ResultatOptimisation> = await response.json().catch(

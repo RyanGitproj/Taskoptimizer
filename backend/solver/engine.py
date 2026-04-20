@@ -34,6 +34,8 @@ class PlageResolue:
     priorite: int
     est_flexible: bool
     est_pause: bool = False
+    overflow: bool = False
+    overflow_reason: str = ""
 
 
 @dataclass(frozen=True)
@@ -96,6 +98,9 @@ class MoteurOptimisation:
 
         # Contrainte 2 : respect de la fenêtre de travail
         self._contrainte_fenetre_travail(modele, vars_taches)
+
+        # Contrainte 2.5 : minimiser le temps de fin max des tâches flexibles
+        self._contrainte_minimiser_fin_flexible(modele, taches_decoupees, vars_taches)
 
         # Contrainte 3 : ancrage des tâches fixes
         self._contrainte_ancrage_fixe(modele, taches_decoupees, vars_taches)
@@ -196,6 +201,30 @@ class MoteurOptimisation:
             # fin <= fin journée si planifiée
             modele.Add(v["fin"] <= self.fin_journee).OnlyEnforceIf(v["planifiee"])
 
+    def _contrainte_minimiser_fin_flexible(
+        self,
+        modele: cp_model.CpModel,
+        taches: List[TacheEntree],
+        vars_taches: List[dict],
+    ):
+        """Minimize the maximum end time of flexible tasks to encourage even distribution."""
+        flexible_fins = []
+        for i, t in enumerate(taches):
+            if t.est_flexible:
+                # Add end time to list if task is planned
+                flexible_fins.append(vars_taches[i]["fin"])
+        
+        if flexible_fins:
+            # Create a variable for the maximum end time
+            max_fin_flexible = modele.NewIntVar(self.debut_journee, self.fin_journee, "max_fin_flexible")
+            
+            # Constraint: max_fin_flexible >= each flexible task's end time
+            for fin in flexible_fins:
+                modele.Add(max_fin_flexible >= fin)
+            
+            # Store this variable to use in the objective
+            self.max_fin_flexible = max_fin_flexible
+
     def _contrainte_ancrage_fixe(
         self,
         modele: cp_model.CpModel,
@@ -219,6 +248,13 @@ class MoteurOptimisation:
         for i, t in enumerate(taches):
             poids = POIDS_PRIORITE.get(t.priorite, t.priorite)
             termes.append(poids * vars_taches[i]["planifiee"])
+        
+        # Add objective to minimize maximum end time of flexible tasks
+        # This encourages flexible tasks to be distributed evenly across the day
+        if hasattr(self, 'max_fin_flexible'):
+            # Very small weight to avoid skipping tasks
+            termes.append(-self.max_fin_flexible * 0.01)
+        
         modele.Maximize(sum(termes))
 
     # ------------------------------------------------------------------
@@ -245,6 +281,19 @@ class MoteurOptimisation:
             if solveur.Value(vars_taches[i]["planifiee"]):
                 debut = int(solveur.Value(vars_taches[i]["debut"]))
                 fin = int(solveur.Value(vars_taches[i]["fin"]))
+                
+                # Check for overflow and mark instead of rejecting
+                overflow = False
+                overflow_reason = ""
+                if fin > self.fin_journee:
+                    overflow = True
+                    if t.est_flexible:
+                        overflow_reason = "flexible_fit_last_slot"
+                        print(f"[WARNING] Flexible task '{t.nom}' exceeds fin_journee ({self.fin_journee}), marked as overflow")
+                    else:
+                        overflow_reason = "fixed_task_exceeds_window"
+                        print(f"[WARNING] Fixed task '{t.nom}' exceeds fin_journee ({self.fin_journee}), marked as overflow")
+                
                 planifiees.append(PlageResolue(
                     id=t.id,
                     nom=t.nom,
@@ -253,6 +302,8 @@ class MoteurOptimisation:
                     priorite=t.priorite,
                     est_flexible=t.est_flexible,
                     est_pause=(t.nom == NOM_PAUSE),
+                    overflow=overflow,
+                    overflow_reason=overflow_reason,
                 ))
                 score_total += POIDS_PRIORITE.get(t.priorite, t.priorite)
             else:
@@ -263,13 +314,13 @@ class MoteurOptimisation:
         # Tri chronologique
         planifiees.sort(key=lambda p: p.debut)
 
+        # Debug: log task order after normalization (BEFORE pauses)
+        print("[DEBUG] Task order after normalization (BEFORE pauses):")
+        for p in planifiees:
+            print(f"  {p.nom}: debut={p.debut}, fin={p.fin}, duree={p.fin - p.debut}, flexible={p.est_flexible}")
+
         # Normalisation : garantir un ordre canonique unique
         planifiees = self._normaliser_planning(planifiees)
-
-        # Debug: log task order
-        print("[DEBUG] Task order after normalization:")
-        for p in planifiees:
-            print(f"  {p.nom}: debut={p.debut}, fin={p.fin}, duree={p.fin - p.debut}")
 
         # Insérer les pauses basées sur l'ordre chronologique réel
         planifiees_avec_pauses = self._inserer_pauses_post_resolution(planifiees)
@@ -302,44 +353,130 @@ class MoteurOptimisation:
         """
         Normalise le planning pour garantir un ordre canonique unique.
         Trie par debut, puis par fin (jamais par ID).
+        Renomme les parties de tâches selon l'ordre chronologique.
         """
         # Tri strictement temporel : debut, puis fin
         planifiees.sort(key=lambda p: (p.debut, p.fin))
-        return planifiees
+        
+        # Renommer les parties de tâches selon l'ordre chronologique
+        # pour éviter "partie 2" avant "partie 1"
+        task_parts = {}
+        for p in planifiees:
+            if " (partie" in p.nom:
+                base_name = p.nom.split(" (partie")[0]
+                if base_name not in task_parts:
+                    task_parts[base_name] = []
+                task_parts[base_name].append(p)
+        
+        # Create new instances with renamed parts
+        result = []
+        for p in planifiees:
+            new_p = p
+            # Check if this task is part of a split task
+            for base_name, parts in task_parts.items():
+                if p in parts and len(parts) > 1:
+                    # Find the position of this part in chronological order
+                    sorted_parts = sorted(parts, key=lambda x: x.debut)
+                    position = sorted_parts.index(p)
+                    new_p = PlageResolue(
+                        id=p.id,
+                        nom=f"{base_name} (partie {position + 1})",
+                        debut=p.debut,
+                        fin=p.fin,
+                        priorite=p.priorite,
+                        est_flexible=p.est_flexible,
+                        est_pause=p.est_pause,
+                        overflow=p.overflow,
+                        overflow_reason=p.overflow_reason,
+                    )
+                    break
+            result.append(new_p)
+        
+        return result
 
     def _inserer_pauses_post_resolution(self, planifiees: List[PlageResolue]) -> List[PlageResolue]:
         """
         Insère les pauses après résolution basées sur l'ordre chronologique réel.
         Applique les règles de productivité sur l'ordre final déterminé par le solveur.
         Recalcul linéaire du planning après insertion des pauses.
+        Les pauses sont optionnelles et ne sont insérées que si le temps disponible le permet.
+        
+        NOUVELLE LOGIQUE:
+        - OR-Tools gère UNIQUEMENT les tâches
+        - Les pauses sont en post-processing avec contraintes intelligentes
+        - Pauses ajoutées SEULEMENT SI:
+          * au moins 2 blocs de travail consécutifs existent
+          * OU durée cumulée de travail > seuil (90 min)
+        - Jamais de pause si planning trop fragmenté
+        - Jamais de pause si cela force un overflow
+        - Jamais de pause si temps restant insuffisant
         """
         if self.duree_pause <= 0 or not planifiees:
             return planifiees
 
-        # Étape 1: Identifier où insérer les pauses basées sur les règles
+        # Calculate task fill rate
+        temps_total_taches = sum(p.fin - p.debut for p in planifiees if not p.est_pause)
+        duree_journee = self.fin_journee - self.debut_journee
+        fill_rate = temps_total_taches / duree_journee
+        
+        print(f"[DEBUG] Task fill rate: {fill_rate:.2%} ({temps_total_taches}/{duree_journee} min)")
+        print(f"[DEBUG] Non-pause tasks: {[(p.nom, p.fin-p.debut) for p in planifiees if not p.est_pause]}")
+        
+        # Only insert pauses if fill rate is below 70% (i.e., there's significant slack time)
+        if fill_rate >= 0.7:
+            print(f"[DEBUG] Skipping all pauses (fill rate {fill_rate:.2%} >= 70%)")
+            return planifiees
+
+        # Check for fragmentation: if too many small tasks, skip pauses
+        nombre_taches = len([p for p in planifiees if not p.est_pause])
+        if nombre_taches > 6:
+            print(f"[DEBUG] Skipping pauses (too many tasks: {nombre_taches} > 6)")
+            return planifiees
+
+        # Étape 1: Identifier où insérer les pauses basées sur les nouvelles règles
         indices_pauses = []
         consecutive_sans_pause = 0
         derniere_tache_origine = None
+        duree_cumulee = 0
+        blocs_consecutifs = 0
 
         for i, plage in enumerate(planifiees):
             # Extraire le nom de la tâche originale (sans "(partie X)")
             nom_origine = plage.nom.split(" (partie")[0] if " (partie" in plage.nom else plage.nom
+            duree_tache = plage.fin - plage.debut
             
             # Si c'est une nouvelle tâche originale (pas un segment de la précédente)
             if nom_origine != derniere_tache_origine:
                 consecutive_sans_pause += 1
                 derniere_tache_origine = nom_origine
+                blocs_consecutifs += 1
+                duree_cumulee += duree_tache
             
-            # Règle 1: Pause après tâche longue (≥60 min)
-            if plage.fin - plage.debut >= 60:
+            # NOUVELLE RÈGLE 1: Pause si au moins 2 blocs de travail consécutifs
+            if blocs_consecutifs >= 2:
                 indices_pauses.append(i + 1)
                 consecutive_sans_pause = 0
+                blocs_consecutifs = 0
+                duree_cumulee = 0
+                print(f"[DEBUG] Pause candidate at position {i+1} (2 consecutive blocks)")
                 continue
-
-            # Règle 2: Max 2 tâches consécutives sans pause
-            if consecutive_sans_pause >= 2:
+            
+            # NOUVELLE RÈGLE 2: Pause si durée cumulée de travail > 90 min
+            if duree_cumulee >= 90:
                 indices_pauses.append(i + 1)
                 consecutive_sans_pause = 0
+                blocs_consecutifs = 0
+                duree_cumulee = 0
+                print(f"[DEBUG] Pause candidate at position {i+1} (cumulative work: {duree_cumulee} min)")
+                continue
+            
+            # Règle de secours: Pause après tâche longue (≥90 min)
+            if duree_tache >= 90:
+                indices_pauses.append(i + 1)
+                consecutive_sans_pause = 0
+                blocs_consecutifs = 0
+                duree_cumulee = 0
+                print(f"[DEBUG] Pause candidate at position {i+1} (long task: {duree_tache} min)")
 
         # Étape 2: Insérer les pauses aux positions identifiées
         pauses_a_inserer = []
@@ -355,6 +492,7 @@ class MoteurOptimisation:
         """
         Recalcule linéairement le planning en insérant les pauses aux positions spécifiées.
         Garantit un ordre chronologique strict et aucun chevauchement.
+        Les pauses sont optionnelles et ne sont insérées que si le temps disponible le permet.
         """
         resultat = []
         decalage_total = 0
@@ -366,28 +504,58 @@ class MoteurOptimisation:
                 _, pause_id = pauses_a_inserer[pause_idx]
                 # La pause commence à la fin de la tâche précédente (ou au début de la journée)
                 debut_pause = resultat[-1].fin if resultat else self.debut_journee
-                pause = PlageResolue(
-                    id=pause_id,
-                    nom=NOM_PAUSE,
-                    debut=debut_pause,
-                    fin=debut_pause + self.duree_pause,
-                    priorite=PRIORITE_PAUSE,
-                    est_flexible=True,
-                    est_pause=True,
-                )
-                resultat.append(pause)
-                decalage_total += self.duree_pause
+                fin_pause = debut_pause + self.duree_pause
+                
+                # Check if adding this pause would cause overflow for ANY remaining task
+                # Calculate the total time needed for all remaining tasks including this pause
+                temps_restant_total = sum(p.fin - p.debut for p in planifiees[i:])
+                temps_disponible = self.fin_journee - debut_pause
+                slack_time = temps_disponible - temps_restant_total - self.duree_pause
+                
+                # Only insert pause if there's significant slack time (at least 30 minutes)
+                # This ensures pauses are only added when there's genuinely extra time available
+                if slack_time >= 30:
+                    pause = PlageResolue(
+                        id=pause_id,
+                        nom=NOM_PAUSE,
+                        debut=debut_pause,
+                        fin=fin_pause,
+                        priorite=PRIORITE_PAUSE,
+                        est_flexible=True,
+                        est_pause=True,
+                        overflow=False,
+                        overflow_reason="",
+                    )
+                    resultat.append(pause)
+                    decalage_total += self.duree_pause
+                    print(f"[DEBUG] Pause inserted at {debut_pause}-{fin_pause} (time available: {temps_disponible} min, needed: {temps_restant_total + self.duree_pause} min)")
+                else:
+                    print(f"[DEBUG] Pause skipped at {debut_pause} (not enough time: {temps_disponible} min available, {temps_restant_total + self.duree_pause} min needed)")
+                
                 pause_idx += 1
             
             # Ajouter la tâche avec décalage
+            nouvelle_fin = plage.fin + decalage_total
+            # Safety check: mark tasks that exceed fin_journee as overflow instead of skipping
+            overflow = plage.overflow or (nouvelle_fin > self.fin_journee)
+            overflow_reason = plage.overflow_reason
+            if nouvelle_fin > self.fin_journee and not plage.overflow:
+                if plage.est_flexible:
+                    overflow_reason = "flexible_fit_last_slot"
+                else:
+                    overflow_reason = "pause_shift_exceeds_window"
+                print(f"[WARNING] Task '{plage.nom}' would exceed fin_journee ({self.fin_journee}), marked as overflow: {overflow_reason}")
+            
             plage_decalee = PlageResolue(
                 id=plage.id,
                 nom=plage.nom,
                 debut=plage.debut + decalage_total,
-                fin=plage.fin + decalage_total,
+                fin=nouvelle_fin,
                 priorite=plage.priorite,
                 est_flexible=plage.est_flexible,
                 est_pause=plage.est_pause,
+                overflow=overflow,
+                overflow_reason=overflow_reason,
             )
             resultat.append(plage_decalee)
         
@@ -395,14 +563,23 @@ class MoteurOptimisation:
         while pause_idx < len(pauses_a_inserer):
             _, pause_id = pauses_a_inserer[pause_idx]
             debut_pause = resultat[-1].fin
+            fin_pause = debut_pause + self.duree_pause
+            # Skip pause if it would exceed fin_journee (optional pauses)
+            if fin_pause > self.fin_journee:
+                print(f"[DEBUG] Pause skipped at end (would exceed fin_journee)")
+                pause_idx += 1
+                continue
+            
             pause = PlageResolue(
                 id=pause_id,
                 nom=NOM_PAUSE,
                 debut=debut_pause,
-                fin=debut_pause + self.duree_pause,
+                fin=fin_pause,
                 priorite=PRIORITE_PAUSE,
                 est_flexible=True,
                 est_pause=True,
+                overflow=False,
+                overflow_reason="",
             )
             resultat.append(pause)
             pause_idx += 1
@@ -453,6 +630,8 @@ class MoteurOptimisation:
                     priorite=plage.priorite,
                     est_flexible=plage.est_flexible,
                     est_pause=True,
+                    overflow=plage.overflow,
+                    overflow_reason=plage.overflow_reason,
                 )
             else:
                 # Tâches : on préserve leur durée originale
@@ -464,6 +643,8 @@ class MoteurOptimisation:
                     priorite=plage.priorite,
                     est_flexible=plage.est_flexible,
                     est_pause=False,
+                    overflow=plage.overflow,
+                    overflow_reason=plage.overflow_reason,
                 )
             
             resultat.append(plage_corrige)
