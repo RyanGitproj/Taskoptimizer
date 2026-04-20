@@ -45,7 +45,7 @@ export default function TimelinePlanning({ resultat, heureDebut, heureFin }: Pro
           transition={{ duration: 0.3, delay: 0 }}
         >
           <MetriqueCard
-            label="Score d'optimisation"
+            label="Score d&apos;optimisation"
             valeur={`${resultat.score_optimisation}%`}
             couleur="indigo"
             icone="◈"
@@ -94,7 +94,7 @@ export default function TimelinePlanning({ resultat, heureDebut, heureFin }: Pro
             <span className="font-semibold">Attention : {overflowTasks.length} tâche(s) dépassent la fenêtre de travail</span>
           </div>
           <p className="text-xs text-amber-600 ml-6">
-            Ces tâches flexibles ont été placées en dernier et dépassent l'heure de fin ({heureFin}). 
+            Ces tâches flexibles ont été placées en dernier et dépassent l&apos;heure de fin ({heureFin}). 
             Considérez de les déplacer plus tôt ou de réduire leur durée.
           </p>
         </div>

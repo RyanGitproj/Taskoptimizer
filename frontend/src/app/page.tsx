@@ -40,6 +40,7 @@ export default function PagePrincipale() {
   const isOptimizingRef = useRef(false);
 
   // Un seul trigger API: cet effect s'exécute uniquement quand l'utilisateur clique "Lancer l'optimisation".
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (optimisationToken === 0) return;
     if (isOptimizingRef.current) return;
