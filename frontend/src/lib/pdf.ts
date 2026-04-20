@@ -120,25 +120,15 @@ export function exporterPlanningPDF(resultat: ResultatOptimisation, heureDebut: 
       y += 32;
     }
     
-    if (plage.est_pause) {
-      const duree = formatDureeMinutes(plage.debut, plage.fin);
-      doc.setTextColor(100, 100, 150);
-      doc.setFont("helvetica", "normal");
-      doc.text(`${plage.debut} - ${plage.fin}`, 20, y);
-      doc.text("⏸ Pause", 60, y);
-      doc.text(duree, 125, y);
-      doc.setTextColor(50, 50, 50);
-    } else {
-      doc.setTextColor(50, 50, 50);
-      doc.text(`${plage.debut} - ${plage.fin}`, 20, y);
-      doc.text(cleanText(plage.activite), 60, y);
-      doc.setTextColor(100, 100, 100);
-      doc.setFontSize(8);
-      const prioriteLabel = getPrioriteLabel(plage.priorite);
-      doc.text(`${prioriteLabel} (P${plage.priorite})`, 125, y);
-      doc.setFontSize(10);
-      doc.setTextColor(50, 50, 50);
-    }
+    doc.setTextColor(50, 50, 50);
+    doc.text(`${plage.debut} - ${plage.fin}`, 20, y);
+    doc.text(cleanText(plage.activite), 60, y);
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(8);
+    const prioriteLabel = getPrioriteLabel(plage.priorite);
+    doc.text(`${prioriteLabel} (P${plage.priorite})`, 125, y);
+    doc.setFontSize(10);
+    doc.setTextColor(50, 50, 50);
     
     y += 10;
   });
@@ -188,13 +178,4 @@ function formatTemps(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
-}
-
-function formatDureeMinutes(debut: string, fin: string): string {
-  const [h1, m1] = debut.split(":").map(Number);
-  const [h2, m2] = fin.split(":").map(Number);
-  const debutMin = h1 * 60 + m1;
-  const finMin = h2 * 60 + m2;
-  const duree = finMin - debutMin;
-  return `${duree} min`;
 }

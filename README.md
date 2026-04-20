@@ -12,7 +12,6 @@ TaskOptimizer est une application web qui génère automatiquement un planning o
 - les contraintes de temps
 - les priorités
 - les tâches fixes
-- les pauses
 
 ---
 
@@ -24,7 +23,6 @@ TaskOptimizer est une application web qui génère automatiquement un planning o
 - Support des tâches fixes
 - Gestion des tâches flexibles
 - Découpage automatique des tâches longues (>90 min en 2 segments)
-- Insertion intelligente de pauses
 - Score d'optimisation
 - Export PDF
 - Interface fluide avec animations
@@ -62,14 +60,6 @@ Frontend → API → Service → Solver → Post-processing → Output
 - Tâches fixes respectées
 
 **Objectif :** Maximiser la somme pondérée des tâches selon leur priorité
-
-### Gestion des pauses
-
-**IMPORTANT :** Les pauses ne sont pas dans OR-Tools. Elles sont ajoutées après optimisation (post-processing).
-
-**Règles :**
-- Pause après tâche ≥ 60 min
-- Maximum 2 tâches consécutives sans pause
 
 ---
 

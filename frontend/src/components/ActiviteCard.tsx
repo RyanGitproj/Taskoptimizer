@@ -54,10 +54,14 @@ export default function ActiviteCard({ activite, index, onModifier, onSupprimer 
           <label className="block text-xs text-gray-400 mb-1">Durée (min)</label>
           <input
             type="number"
-            value={activite.duree}
-            min={5}
+            value={activite.duree === 0 ? "" : activite.duree}
+            placeholder="0"
+            min={1}
             max={480}
-            onChange={(e) => onModifier(activite.id, "duree", parseInt(e.target.value) || 30)}
+            onChange={(e) => {
+              const val = e.target.value === "" ? 0 : parseInt(e.target.value);
+              onModifier(activite.id, "duree", isNaN(val) ? 0 : val);
+            }}
             className="w-full text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 transition"
           />
         </div>

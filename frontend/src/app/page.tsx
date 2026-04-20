@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Activite, ResultatOptimisation } from "@/types";
+import {
+  Activite,
+  ModePlacement,
+  ParametresOptimisation,
+  ResultatOptimisation,
+} from "@/types";
 import { optimiserPlanning, ErreurAPI } from "@/lib/api";
 import { genererIdUnique } from "@/lib/utils";
 import { exporterPlanningPDF } from "@/lib/pdf";
@@ -30,7 +35,7 @@ export default function PagePrincipale() {
   const [activites, setActivites] = useState<Activite[]>(ACTIVITES_EXEMPLES);
   const [heureDebut, setHeureDebut] = useState("09:00");
   const [heureFin, setHeureFin] = useState("18:00");
-  const [dureePause, setDureePause] = useState(15);
+  const [modePlacement, setModePlacement] = useState<ModePlacement>("intelligent");
   const [resultat, setResultat] = useState<ResultatOptimisation | null>(null);
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -56,11 +61,11 @@ export default function PagePrincipale() {
         return;
       }
 
-      const payloadSnapshot = {
+      const payloadSnapshot: ParametresOptimisation = {
         activites: valides.map(({ id: _id, ...rest }) => rest), // eslint-disable-line @typescript-eslint/no-unused-vars
         heure_debut_travail: heureDebut,
         heure_fin_travail: heureFin,
-        duree_pause: dureePause,
+        mode_placement: modePlacement,
       };
 
       try {
@@ -84,7 +89,7 @@ export default function PagePrincipale() {
     };
 
     executerOptimisation();
-  }, [optimisationToken]); // Only trigger when user clicks button
+  }, [optimisationToken]); // Seul le token doit déclencher l'effet
 
   const ajouterActivite = () => {
     if (activites.length >= 20) return;
@@ -123,8 +128,8 @@ export default function PagePrincipale() {
     setHeureFin(valeur);
   };
 
-  const handleDureePauseChange = (valeur: number) => {
-    setDureePause(valeur);
+  const handleModePlacementChange = (valeur: ModePlacement) => {
+    setModePlacement(valeur);
   };
 
   return (
@@ -174,10 +179,10 @@ export default function PagePrincipale() {
             <ParametresPanel
               heureDebut={heureDebut}
               heureFin={heureFin}
-              dureePause={dureePause}
+              modePlacement={modePlacement}
               onChangeDebut={handleHeureDebutChange}
               onChangeFin={handleHeureFinChange}
-              onChangePause={handleDureePauseChange}
+              onChangeModePlacement={handleModePlacementChange}
             />
 
             {/* Grille d'activités */}

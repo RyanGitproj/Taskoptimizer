@@ -33,7 +33,6 @@ code, body = fetch("/api/optimiser", {
     ],
     "heure_debut_travail": "17:00",
     "heure_fin_travail": "18:00",
-    "duree_pause": 15,
 })
 
 print(f"Status: {code}")

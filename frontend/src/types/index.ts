@@ -1,4 +1,5 @@
 export type Flexibilite = "fixe" | "flexible";
+export type ModePlacement = "intelligent" | "uniforme" | "compact";
 
 export interface Activite {
   id: string; // uniquement côté front pour la gestion de liste
@@ -13,7 +14,7 @@ export interface ParametresOptimisation {
   activites: Omit<Activite, "id">[];
   heure_debut_travail: string;
   heure_fin_travail: string;
-  duree_pause: number;
+  mode_placement: ModePlacement;
 }
 
 export interface PlageHoraire {
@@ -22,7 +23,6 @@ export interface PlageHoraire {
   fin: string;
   priorite: number;
   flexibilite: string;
-  est_pause: boolean;
   overflow: boolean;
   overflow_reason: string;
 }

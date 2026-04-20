@@ -38,7 +38,10 @@ class ParametresOptimisation(BaseModel):
     activites: List[Activite] = Field(..., min_length=1, max_length=20)
     heure_debut_travail: str = Field(..., description="Début de journée (HH:MM)")
     heure_fin_travail: str = Field(..., description="Fin de journée (HH:MM)")
-    duree_pause: int = Field(default=15, ge=0, le=60, description="Durée des pauses en minutes")
+    mode_placement: Literal["intelligent", "uniforme", "compact"] = Field(
+        default="intelligent",
+        description="Stratégie de placement des tâches flexibles",
+    )
 
     @field_validator("heure_debut_travail", "heure_fin_travail")
     @classmethod
@@ -58,7 +61,6 @@ class PlageHoraire(BaseModel):
     fin: str
     priorite: int
     flexibilite: str
-    est_pause: bool = False
     overflow: bool = False
     overflow_reason: str = ""
 

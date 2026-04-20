@@ -26,7 +26,7 @@ export default function TimelinePlanning({ resultat, heureDebut, heureFin }: Pro
     ((heureEnMinutes(fin) - heureEnMinutes(debut)) / dureeJournee) * 100;
 
   // Count overflow tasks
-  const overflowTasks = resultat.planning.filter(p => p.overflow && !p.est_pause);
+  const overflowTasks = resultat.planning.filter(p => p.overflow);
 
   // Générer les marqueurs horaires
   const marqueurs: string[] = [];
@@ -70,7 +70,7 @@ export default function TimelinePlanning({ resultat, heureDebut, heureFin }: Pro
         >
           <MetriqueCard
             label="Activités planifiées"
-            valeur={`${resultat.planning.filter((p) => !p.est_pause).length}`}
+            valeur={`${resultat.planning.length}`}
             couleur="violet"
             icone="◉"
           />
@@ -224,25 +224,6 @@ function BlocTimeline({
   largeur: number;
   index: number;
 }) {
-  if (plage.est_pause) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scaleX: 0 }}
-        animate={{ opacity: 1, scaleX: 1 }}
-        transition={{ duration: 0.3, delay: index * 0.05 }}
-        className="absolute top-1 bottom-1 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center"
-        style={{ left: `${gauche}%`, width: `${Math.max(largeur, 0.5)}%` }}
-        title="Pause"
-      >
-        {largeur > 3 && (
-          <span className="text-[10px] text-blue-400 font-semibold flex items-center gap-1">
-            ⏸ Pause
-          </span>
-        )}
-      </motion.div>
-    );
-  }
-
   const couleur = COULEURS_PRIORITE[plage.priorite];
 
   return (
@@ -270,20 +251,6 @@ function BlocTimeline({
 }
 
 function LignePlanning({ plage }: { plage: PlageHoraire }) {
-  if (plage.est_pause) {
-    const duree = heureEnMinutes(plage.fin) - heureEnMinutes(plage.debut);
-    return (
-      <div className="flex items-center gap-3 py-2.5 px-4 bg-blue-50 border border-blue-100 rounded-xl">
-        <div className="text-lg flex-shrink-0">⏸</div>
-        <span className="text-xs text-blue-400 font-mono w-24 flex-shrink-0">
-          {plage.debut} → {plage.fin}
-        </span>
-        <span className="text-sm font-semibold text-blue-600 flex-1">Pause</span>
-        <span className="text-xs text-blue-400 flex-shrink-0">{dureeFormatee(duree)}</span>
-      </div>
-    );
-  }
-
   const couleur = COULEURS_PRIORITE[plage.priorite];
   const duree = heureEnMinutes(plage.fin) - heureEnMinutes(plage.debut);
 

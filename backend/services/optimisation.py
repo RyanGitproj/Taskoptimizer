@@ -7,7 +7,7 @@ Aucune logique OR-Tools ici — uniquement de l'orchestration.
 """
 
 import logging
-from typing import List, Tuple
+from typing import List
 from models.schemas import (
     Activite,
     Flexibilite,
@@ -62,7 +62,6 @@ def _convertir_planning(plages_resolues) -> List[PlageHoraire]:
             fin=_minutes_en_heure(p.fin),
             priorite=p.priorite,
             flexibilite="flexible" if p.est_flexible else "fixe",
-            est_pause=p.est_pause,
             overflow=p.overflow,
             overflow_reason=p.overflow_reason,
         )
@@ -94,8 +93,7 @@ def optimiser_planning(params: ParametresOptimisation) -> ResultatOptimisation:
         moteur = MoteurOptimisation(
             debut_journee=debut_journee,
             fin_journee=fin_journee,
-            duree_pause=params.duree_pause,
-            seuil_pause=120,
+            mode_placement=params.mode_placement,
         )
 
         resultat = moteur.resoudre(taches)
@@ -112,7 +110,6 @@ def optimiser_planning(params: ParametresOptimisation) -> ResultatOptimisation:
     temps_total = sum(
         _heure_en_minutes(p.fin) - _heure_en_minutes(p.debut)
         for p in planning
-        if not p.est_pause
     )
 
     message = "Optimisation réussie."

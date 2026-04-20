@@ -33,3 +33,16 @@ class ErreurSolveur(ErreurMetier):
             code="ERREUR_SOLVEUR",
             message=f"Erreur interne du solveur : {detail}",
         )
+
+
+class ErreurTacheFixeHorsFenetre(ErreurMetier):
+    """Une tâche fixe est positionnée hors fenêtre de travail."""
+
+    def __init__(self, nom_tache: str, debut: str, fin: str):
+        super().__init__(
+            code="TACHE_FIXE_HORS_FENETRE",
+            message=(
+                f"La tâche fixe '{nom_tache}' est hors fenêtre de travail "
+                f"({debut} - {fin}). Ajustez l'heure souhaitée ou la durée."
+            ),
+        )
