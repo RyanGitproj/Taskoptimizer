@@ -33,31 +33,18 @@ export default function PagePrincipale() {
   const [dureePause, setDureePause] = useState(15);
   const [resultat, setResultat] = useState<ResultatOptimisation | null>(null);
   const [chargement, setChargement] = useState(false);
-  const [chargementAuto, setChargementAuto] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [succesVisible, setSuccesVisible] = useState(false);
-  const [view, setView] = useState<"input" | "result">("input"); // Explicit view state
+  const [view, setView] = useState<"input" | "result">("input");
   const [optimisationToken, setOptimisationToken] = useState(0);
-  const isNavigatingRef = useRef(false);
   const isOptimizingRef = useRef(false);
-  const isAutoCallRef = useRef(false); // Prevent feedback loop on auto calls
-
-  // Global API call tracking
-  if (typeof window !== "undefined") {
-    (window as any).__lastApiCall = (window as any).__lastApiCall || null;
-  }
 
   // Un seul trigger API: cet effect s'exécute uniquement quand l'utilisateur clique "Lancer l'optimisation".
   useEffect(() => {
-    console.log("[USE EFFECT TRIGGERED]", { optimisationToken });
     if (optimisationToken === 0) return;
-    if (isOptimizingRef.current) {
-      console.log("[API GUARD] Skipping - API call already in progress");
-      return;
-    }
+    if (isOptimizingRef.current) return;
 
     const executerOptimisation = async () => {
-      console.log("[EXECUTING OPTIMISATION]", { optimisationToken });
       isOptimizingRef.current = true;
       
       const valides = activites.filter((a) => a.nom.trim().length > 0);
@@ -68,7 +55,6 @@ export default function PagePrincipale() {
         return;
       }
 
-      const requestId = Math.floor(Math.random() * 10000);
       const payloadSnapshot = {
         activites: valides.map(({ id: _id, ...rest }) => rest), // eslint-disable-line @typescript-eslint/no-unused-vars
         heure_debut_travail: heureDebut,
@@ -76,32 +62,15 @@ export default function PagePrincipale() {
         duree_pause: dureePause,
       };
 
-      // Track API call interval
-      const now = Date.now();
-      const lastCall = (window as any).__lastApiCall;
-      const interval = lastCall ? now - lastCall : null;
-      (window as any).__lastApiCall = now;
-
-      console.log(`[REQ-${requestId}] EXÉCUTION - Source: clic utilisateur`);
-      console.log(`[REQ-${requestId}] FINAL PAYLOAD:`, payloadSnapshot);
-      console.log("[API TRIGGER]", {
-        heureFin,
-        activites: payloadSnapshot.activites.length,
-        source: "effect",
-        intervalSinceLastCall: interval,
-        lastCallTimestamp: lastCall,
-      });
-
       try {
         const res = await optimiserPlanning(payloadSnapshot);
-        console.log(`[REQ-${requestId}] RÉUSSI`);
         setResultat(res);
         setErreur(null);
         setView("result");
         setSuccesVisible(true);
         setTimeout(() => setSuccesVisible(false), 3000);
       } catch (e: unknown) {
-        console.error(`[REQ-${requestId}] ERREUR:`, e);
+        console.error("Erreur optimisation:", e);
         if (e instanceof ErreurAPI) {
           setErreur(e.message);
         } else {
@@ -132,23 +101,13 @@ export default function PagePrincipale() {
   };
 
   const lancerOptimisation = () => {
-    console.log("[LANCER_OPTIMISATION CALLED]", {
-      heureFin,
-      activites: activites.filter((a) => a.nom.trim().length > 0).length,
-      source: "manual",
-      currentToken: optimisationToken,
-    });
     setErreur(null);
     setResultat(null);
     setChargement(true);
-    setOptimisationToken((prev) => {
-      console.log("[TOKEN INCREMENT]", { from: prev, to: prev + 1 });
-      return prev + 1;
-    });
+    setOptimisationToken((prev) => prev + 1);
   };
 
   const reinitialiser = () => {
-    console.log("[DEBUG] reinitialiser called - setting view to input");
     setView("input");
     setResultat(null);
     setErreur(null);
@@ -159,8 +118,7 @@ export default function PagePrincipale() {
   };
 
   const handleHeureFinChange = (valeur: string) => {
-    if (!valeur) return; // Sécurité contre les valeurs vides
-    console.log("[DEBUG] User changed heureFin to:", valeur);
+    if (!valeur) return;
     setHeureFin(valeur);
   };
 

@@ -40,12 +40,6 @@ class ParametresOptimisation(BaseModel):
     heure_fin_travail: str = Field(..., description="Fin de journée (HH:MM)")
     duree_pause: int = Field(default=15, ge=0, le=60, description="Durée des pauses en minutes")
 
-    @field_validator("heure_fin_travail")
-    @classmethod
-    def log_heure_fin_travail(cls, v):
-        print(f"[SCHEMA DEBUG] heure_fin_travail reçue dans schema: '{v}'")
-        return v
-
     @field_validator("heure_debut_travail", "heure_fin_travail")
     @classmethod
     def valider_heure_travail(cls, v):

@@ -289,10 +289,8 @@ class MoteurOptimisation:
                     overflow = True
                     if t.est_flexible:
                         overflow_reason = "flexible_fit_last_slot"
-                        print(f"[WARNING] Flexible task '{t.nom}' exceeds fin_journee ({self.fin_journee}), marked as overflow")
                     else:
                         overflow_reason = "fixed_task_exceeds_window"
-                        print(f"[WARNING] Fixed task '{t.nom}' exceeds fin_journee ({self.fin_journee}), marked as overflow")
                 
                 planifiees.append(PlageResolue(
                     id=t.id,
@@ -314,21 +312,11 @@ class MoteurOptimisation:
         # Tri chronologique
         planifiees.sort(key=lambda p: p.debut)
 
-        # Debug: log task order after normalization (BEFORE pauses)
-        print("[DEBUG] Task order after normalization (BEFORE pauses):")
-        for p in planifiees:
-            print(f"  {p.nom}: debut={p.debut}, fin={p.fin}, duree={p.fin - p.debut}, flexible={p.est_flexible}")
-
         # Normalisation : garantir un ordre canonique unique
         planifiees = self._normaliser_planning(planifiees)
 
         # Insérer les pauses basées sur l'ordre chronologique réel
         planifiees_avec_pauses = self._inserer_pauses_post_resolution(planifiees)
-
-        # Debug: log task order after pauses
-        print("[DEBUG] Task order after pauses:")
-        for p in planifiees_avec_pauses:
-            print(f"  {p.nom}: debut={p.debut}, fin={p.fin}, duree={p.fin - p.debut}, est_pause={p.est_pause}")
 
         # Validation: detect unjustified gaps
         for i in range(len(planifiees_avec_pauses) - 1):
@@ -336,7 +324,7 @@ class MoteurOptimisation:
             suivant = planifiees_avec_pauses[i + 1]
             gap = suivant.debut - actuel.fin
             if gap > 30 and not actuel.est_pause and not suivant.est_pause:
-                print(f"[WARNING] Unjustified gap detected: {gap} min between '{actuel.nom}' ({actuel.fin}) and '{suivant.nom}' ({suivant.debut})")
+                pass  # Unjustified gap detected but not logged in production
 
         # Validation finale : détecter et corriger les chevauchements
         planifiees_avec_pauses = self._valider_et_corriger_chevauchements(planifiees_avec_pauses)
@@ -418,19 +406,14 @@ class MoteurOptimisation:
         temps_total_taches = sum(p.fin - p.debut for p in planifiees if not p.est_pause)
         duree_journee = self.fin_journee - self.debut_journee
         fill_rate = temps_total_taches / duree_journee
-        
-        print(f"[DEBUG] Task fill rate: {fill_rate:.2%} ({temps_total_taches}/{duree_journee} min)")
-        print(f"[DEBUG] Non-pause tasks: {[(p.nom, p.fin-p.debut) for p in planifiees if not p.est_pause]}")
-        
+
         # Only insert pauses if fill rate is below 70% (i.e., there's significant slack time)
         if fill_rate >= 0.7:
-            print(f"[DEBUG] Skipping all pauses (fill rate {fill_rate:.2%} >= 70%)")
             return planifiees
 
         # Check for fragmentation: if too many small tasks, skip pauses
         nombre_taches = len([p for p in planifiees if not p.est_pause])
         if nombre_taches > 6:
-            print(f"[DEBUG] Skipping pauses (too many tasks: {nombre_taches} > 6)")
             return planifiees
 
         # Étape 1: Identifier où insérer les pauses basées sur les nouvelles règles
@@ -458,7 +441,6 @@ class MoteurOptimisation:
                 consecutive_sans_pause = 0
                 blocs_consecutifs = 0
                 duree_cumulee = 0
-                print(f"[DEBUG] Pause candidate at position {i+1} (2 consecutive blocks)")
                 continue
             
             # NOUVELLE RÈGLE 2: Pause si durée cumulée de travail > 90 min
@@ -467,7 +449,6 @@ class MoteurOptimisation:
                 consecutive_sans_pause = 0
                 blocs_consecutifs = 0
                 duree_cumulee = 0
-                print(f"[DEBUG] Pause candidate at position {i+1} (cumulative work: {duree_cumulee} min)")
                 continue
             
             # Règle de secours: Pause après tâche longue (≥90 min)
@@ -476,7 +457,6 @@ class MoteurOptimisation:
                 consecutive_sans_pause = 0
                 blocs_consecutifs = 0
                 duree_cumulee = 0
-                print(f"[DEBUG] Pause candidate at position {i+1} (long task: {duree_tache} min)")
 
         # Étape 2: Insérer les pauses aux positions identifiées
         pauses_a_inserer = []
@@ -528,10 +508,8 @@ class MoteurOptimisation:
                     )
                     resultat.append(pause)
                     decalage_total += self.duree_pause
-                    print(f"[DEBUG] Pause inserted at {debut_pause}-{fin_pause} (time available: {temps_disponible} min, needed: {temps_restant_total + self.duree_pause} min)")
                 else:
-                    print(f"[DEBUG] Pause skipped at {debut_pause} (not enough time: {temps_disponible} min available, {temps_restant_total + self.duree_pause} min needed)")
-                
+                    pass
                 pause_idx += 1
             
             # Ajouter la tâche avec décalage
@@ -544,7 +522,6 @@ class MoteurOptimisation:
                     overflow_reason = "flexible_fit_last_slot"
                 else:
                     overflow_reason = "pause_shift_exceeds_window"
-                print(f"[WARNING] Task '{plage.nom}' would exceed fin_journee ({self.fin_journee}), marked as overflow: {overflow_reason}")
             
             plage_decalee = PlageResolue(
                 id=plage.id,
@@ -566,7 +543,6 @@ class MoteurOptimisation:
             fin_pause = debut_pause + self.duree_pause
             # Skip pause if it would exceed fin_journee (optional pauses)
             if fin_pause > self.fin_journee:
-                print(f"[DEBUG] Pause skipped at end (would exceed fin_journee)")
                 pause_idx += 1
                 continue
             
