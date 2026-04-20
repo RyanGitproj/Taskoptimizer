@@ -44,6 +44,8 @@ else:
         "http://127.0.0.1:3001"
     ]
 
+logger.info(f"CORS configured origins: {origins}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
